@@ -1,0 +1,3 @@
+/home/satoshi/citbrains_humanoid/for2050/src/hr46_b3m/../pyfiles/hr46_b3m
+/home/satoshi/citbrains_humanoid/for2050/src/hr46_b3m/../pyfiles/servo_para.txt
+/home/satoshi/citbrains_humanoid/for2050/src/hr46_b3m/../pyfiles/RTIMULib.ini
