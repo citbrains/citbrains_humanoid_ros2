@@ -9,10 +9,10 @@
 /*	date		:	2007.7.15								*/
 /*	note		:	editor tab = 4							*/
 /*															*/
-/*	memo		:	����C�y����Windows����̕��s�p�^�[����	*/
-/*					�����̂��߂ɕύX��						*/
+/*	memo		:	南方，土橋がWindowsからの歩行パターンの	*/
+/*					生成のために変更中						*/
 /*	date		:	2011.12.29								*/
-/*					2012.01.14	�������Ő��䂷�邽�߂ɒǉ�*/
+/*					2012.01.14	一定周期で制御するために追加*/
 /*----------------------------------------------------------*/
 
 
@@ -81,6 +81,21 @@ static string res;
 
 extern "C"
 
+int scif1_tx_fun()
+{
+	mutex::scoped_lock look(lock_obj);
+
+	int len = 0;
+	for(int i = 0; i < SFMT_SIZE-1 && sfmt[i] != EOF_CODE && sfmt[i] != EOF_CODE3; i++ )
+	{
+		len++;
+	}
+	res = string(sfmt, len);
+	memset(sfmt, EOF_CODE, SFMT_SIZE);
+	response_ready = true;
+
+	return 1;
+}
 
 string recvHajimeCommand(const string &str, void *context)
 {
@@ -115,10 +130,10 @@ void ipcthread(int argc, char *argv[], int id)
 }
 
 extern "C"
-int	servo_offset[SERV_NUM];	// �I�t�Z�b�g�ۑ��p
+int	servo_offset[SERV_NUM];	// オフセット保存用
 
 //========================
-// �I�t�Z�b�g���́i���@����̃f�[�^�j
+// オフセット入力（実機からのデータ）
 //========================
 int offset_load(char *filename, int servo_offset[SERV_NUM]){
 	char off_tmp[100];
@@ -261,7 +276,7 @@ int eeprom_load(char *filename)
 
 	xp_mv_walk.x_fwd_acc_pitch		=	eeprom_buff[101];
 	xp_mv_walk.x_bwd_acc_pitch		=	eeprom_buff[102];
-	xp_dlim_wait_pitch.dlim			=	eeprom_buff[103];		// �s�b�`��ύX����䗦
+	xp_dlim_wait_pitch.dlim			=	eeprom_buff[103];		// ピッチを変更する比率
     xp_mv_walk.accurate_x_percent_dlim = eeprom_buff[104];
     xp_mv_walk.accurate_y_percent_dlim = eeprom_buff[105];
 	xp_mv_walk.accurate_th_percent_dlim = eeprom_buff[106];
@@ -278,10 +293,21 @@ int		main( int argc, char *argv[] )
 	int id = 0;
 	short j;
 	int shutdown_flag = 0;
+#ifdef VREP_SIMULATOR
+	OrientationEstimator orientationEst((double)FRAME_RATE / 1000.0, 0.1);
+	SimulatorIPCClient client;
+	for (int i=1; i<argc; i++) {
+		std::string str(argv[i]);
+		if (str.find("ID=") == 0) {
+			std::string idstr = str.substr(3);   
+			id = strtol(idstr.c_str(), NULL, 10);
+		}
+	}
+#endif
 	boost::thread thread(boost::bind(ipcthread, argc, argv, id));
 	boost::posix_time::ptime ptime = boost::posix_time::microsec_clock::local_time(); 
 	const char *servo_port = "/dev/kondoservo";
-	if (argc > 1)					//なにこれ？
+	if (argc > 1)
 		servo_port = argv[1];
 #if !defined VREP_SIMULATOR
 	int m_sampleCount = 0;
@@ -311,10 +337,13 @@ int		main( int argc, char *argv[] )
 
 #endif
 
+#ifdef _MSC_VER
+	timeBeginPeriod(1);
+#endif
 
-	var_init();					// �ϐ��̏�����
-	serv_init();				// �T�[�{���[�^�̏�����
-	calc_mv_init();				// �����̌v�Z�̏�����
+	var_init();					// 変数の初期化
+	serv_init();				// サーボモータの初期化
+	calc_mv_init();				// 動きの計算の初期化
 	load_pc_motion("motions");
 	offset_load((char *)"offset_angle.txt", servo_offset);
 	eeprom_load((char *)"eeprom_list.txt");
@@ -325,7 +354,7 @@ int		main( int argc, char *argv[] )
 	{
 		bool cmd_accept = false;
 		{
-			// accept command 多分このスコープ内は使われていない。恐らくjoystick.cppに移行済み
+			// accept command
 			mutex::scoped_lock look(lock_obj);
 			if (cmd.size() > 0) {
 				memcpy(rfmt, &cmd[0], cmd.size());
@@ -426,11 +455,54 @@ int		main( int argc, char *argv[] )
 			if( xv_sv[j].deg_sv	> xp_sv[j].deg_lim_h*100 || xv_sv[j].deg_sv < xp_sv[j].deg_lim_l*100 )
 					printf("*******ERROR**** xv_sv[%d].deg_sv=%f\n", j, xv_sv[j].deg_sv/100.0f);
 		}
+#ifdef VREP_SIMULATOR
+		{
+			static int cnt = 0;
+			std::vector<int> angles(24, 0);
+			for(int i=0; i<24; i++)
+				angles[i] = xv_sv[i].pls_out + servo_offset[i];
+			float ptime = client.getSimulationTime();
+			hc::SensorData sd;
+			do {
+				sd = client.setJointAngles(id, angles, 10);
+				boost::this_thread::sleep(boost::posix_time::microseconds(1000));
+				// empty sensor data indicate that simulation didn't progress 
+			} while(sd.accel.size() == 0);
 
+			while (ptime == client.getSimulationTime()) {
+				boost::this_thread::sleep(boost::posix_time::microseconds(5000));
+			}
+			if (cnt > 5) {
+				xv_gyro.gyro_data1 = -sd.gyro[0] * 1;	// roll		未解決！！	予想では	最大電圧(オフセット済み):1[V], 最大検出:500[deg/sec] 1/500=0.002 にxp_gyro.gyro_k1,2(1000)をかける 0.002*1000=2
+				xv_gyro.gyro_data2 = -sd.gyro[1] * 1;	// pitch	未解決！！
+				xv_gyro.gyro_data3 =  sd.gyro[2] * 1;	// yaw	最大電圧(オフセット済み):2[V], 最大検出:200[deg/sec] 2/200=0.01 にxp_gyro.gyro_k3(100)をかける 0.01*100=1
+				xv_acc.acc_data1 = sd.accel[0] / 9.8f * 0.3f * 3.1f;	// x	/9.8で単位をGからm/ssにする
+				xv_acc.acc_data2 = sd.accel[1] / 9.8f * 0.3f * 3.1f;	// y	1.08/3.6 = 0.3 でスケールをあわせる	センサの最大電圧（オフセット済み）:1.08[V], 最大検出:3.6[G]
+				xv_acc.acc_data3 = sd.accel[2] / 9.8f * 0.3f * 3.1f;	// z	最後にxp_acc.acc_k(3.1)をかける
+//				printf("R:%lf\tP:%lf\tY:%lf\n",xv_gyro.gyro_data1, xv_gyro.gyro_data2, xv_gyro.gyro_data3);
+//				printf("X:%f\tY:%f\tZ:%f\n",xv_acc.acc_data1, xv_acc.acc_data2, xv_acc.acc_data3);
+				
+				if ((xv_acc.acc_data1 != 0.0)||(xv_acc.acc_data2 != 0.0)||(xv_acc.acc_data3 != 0.0)){
+					orientationEst.update(xv_gyro.gyro_data1*M_PI/180.0, xv_gyro.gyro_data2*M_PI/180.0, xv_gyro.gyro_data3*M_PI/180.0,
+						xv_acc.acc_data1*9.8, xv_acc.acc_data2*9.8, xv_acc.acc_data3*9.8);
+		
+					xv_gyro.gyro_roll   =
+					xv_gyro.gyro_roll2  = orientationEst.getRoll()   * 180.0 / M_PI;
+					xv_gyro.gyro_pitch  =
+					xv_gyro.gyro_pitch2 = orientationEst.getPitch()  * 180.0 / M_PI;
+					xv_gyro.gyro_yaw    =
+					xv_gyro.gyro_yaw2   = orientationEst.getYaw()    * 180.0 / M_PI;
+					orientationEst.getQuaternion(&xv_gyro.quaternion[0], &xv_gyro.quaternion[1], &xv_gyro.quaternion[2], &xv_gyro.quaternion[3]);
+//					printf("Roll:%f\tPitch:%f\tYaw:%f\n",xv_gyro.gyro_roll, xv_gyro.gyro_pitch, xv_gyro.gyro_yaw);
+				}
+			}
+			cnt ++;
+		}
+#endif // VREP_SIMULATOR
 
 #if !defined VREP_SIMULATOR
-		//rtm_main();//���[�V�������[�_�𓮂����̂ɕK�v�����A�K�؂ȃ^�C�~���O��������K�v����
-		// �������̂��߂�wait
+		//rtm_main();//モーションローダを動かすのに必要だが、適切なタイミングを見つける必要あり
+		// 一定周期のためのwait
 		boost::posix_time::ptime now = boost::posix_time::microsec_clock::local_time(); 
 		boost::posix_time::time_duration diff = now - ptime;
 		if (diff.total_milliseconds() > (FRAME_RATE))
