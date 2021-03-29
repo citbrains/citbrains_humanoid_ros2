@@ -9,10 +9,10 @@
 /*	date		:	2007.7.15								*/
 /*	note		:	editor tab = 4							*/
 /*															*/
-/*	memo		:	南方，土橋がWindowsからの歩行パターンの	*/
-/*					生成のために変更中						*/
+/*	memo		:	����C�y����Windows����̕��s�p�^�[����	*/
+/*					�����̂��߂ɕύX��						*/
 /*	date		:	2011.12.29								*/
-/*					2012.01.14	一定周期で制御するために追加*/
+/*					2012.01.14	�������Ő��䂷�邽�߂ɒǉ�*/
 /*----------------------------------------------------------*/
 
 
@@ -66,12 +66,12 @@ extern "C" {
 #include	"b3m.h"
 }
 
-#pragma comment(lib ,"winmm.lib" )
+//#pragma comment(lib ,"winmm.lib" )
 
-#define	FRAME_RATE	10	
+constexpr int FRAME_RATE = 10;	
 
-using namespace std;
-using namespace boost;
+using namespace std;		//犯罪だろ....
+using namespace boost;		//なあ....
 
 static mutex lock_obj;
 static string cmd;
@@ -130,10 +130,10 @@ void ipcthread(int argc, char *argv[], int id)
 }
 
 extern "C"
-int	servo_offset[SERV_NUM];	// オフセット保存用
+int	servo_offset[SERV_NUM];	// �I�t�Z�b�g�ۑ��p
 
 //========================
-// オフセット入力（実機からのデータ）
+// �I�t�Z�b�g���́i���@����̃f�[�^�j
 //========================
 int offset_load(char *filename, int servo_offset[SERV_NUM]){
 	char off_tmp[100];
@@ -276,7 +276,7 @@ int eeprom_load(char *filename)
 
 	xp_mv_walk.x_fwd_acc_pitch		=	eeprom_buff[101];
 	xp_mv_walk.x_bwd_acc_pitch		=	eeprom_buff[102];
-	xp_dlim_wait_pitch.dlim			=	eeprom_buff[103];		// ピッチを変更する比率
+	xp_dlim_wait_pitch.dlim			=	eeprom_buff[103];		// �s�b�`��ύX����䗦
     xp_mv_walk.accurate_x_percent_dlim = eeprom_buff[104];
     xp_mv_walk.accurate_y_percent_dlim = eeprom_buff[105];
 	xp_mv_walk.accurate_th_percent_dlim = eeprom_buff[106];
@@ -291,8 +291,9 @@ int eeprom_load(char *filename)
 int		main( int argc, char *argv[] )
 {
 	int id = 0;
-	short j;
+	//short j;
 	int shutdown_flag = 0;
+/*
 #ifdef VREP_SIMULATOR
 	OrientationEstimator orientationEst((double)FRAME_RATE / 1000.0, 0.1);
 	SimulatorIPCClient client;
@@ -304,7 +305,9 @@ int		main( int argc, char *argv[] )
 		}
 	}
 #endif
-	boost::thread thread(boost::bind(ipcthread, argc, argv, id));
+*/
+
+	//boost::thread thread(boost::bind(ipcthread, argc, argv, id));
 	boost::posix_time::ptime ptime = boost::posix_time::microsec_clock::local_time(); 
 	const char *servo_port = "/dev/kondoservo";
 	if (argc > 1)
@@ -337,13 +340,13 @@ int		main( int argc, char *argv[] )
 
 #endif
 
-#ifdef _MSC_VER
+/*	#ifdef _MSC_VER
 	timeBeginPeriod(1);
-#endif
+#endif */
 
-	var_init();					// 変数の初期化
-	serv_init();				// サーボモータの初期化
-	calc_mv_init();				// 動きの計算の初期化
+	var_init();					// �ϐ��̏�����
+	serv_init();				// �T�[�{���[�^�̏�����
+	calc_mv_init();				// �����̌v�Z�̏�����
 	load_pc_motion("motions");
 	offset_load((char *)"offset_angle.txt", servo_offset);
 	eeprom_load((char *)"eeprom_list.txt");
@@ -354,7 +357,8 @@ int		main( int argc, char *argv[] )
 	{
 		bool cmd_accept = false;
 		{
-			// accept command
+			// accept command			-----------------------ここジョイスティック受け取ってるけど流石にもう使ってないよね？--------------------------
+			//そういう話では無かった。確かにジョイスティックからのコマンドを受け取っている訳ではないが、普通にコマンドを受け取っていた。コメントを安易に信じるべきでない。
 			mutex::scoped_lock look(lock_obj);
 			if (cmd.size() > 0) {
 				memcpy(rfmt, &cmd[0], cmd.size());
@@ -418,9 +422,11 @@ int		main( int argc, char *argv[] )
 			}
 		}
 #endif //!defined VREP_SIMULATOR
-		if (!shutdown_flag) cntr();
 
-#if 0
+
+		if (!shutdown_flag) cntr();			//重要ゾーンじゃん
+
+/*#if 0
 		{
 			FILE *fp;
 			static float old_angle[24] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -439,7 +445,7 @@ int		main( int argc, char *argv[] )
 			fprintf(fp, "\n");
 			fclose(fp);
 		}
-#endif
+#endif*/
 
 		static unsigned long last_pan_update = 0;
 		if ((fabs(xv_gyro.gyro_roll) > 30)||(fabs(xv_gyro.gyro_pitch) > 30)){
@@ -450,12 +456,13 @@ int		main( int argc, char *argv[] )
 			}
 		}
 
-		for( j=0; j<SERV_NUM; j++ )
+		for(int j=0; j<SERV_NUM; j++ )
 		{
 			if( xv_sv[j].deg_sv	> xp_sv[j].deg_lim_h*100 || xv_sv[j].deg_sv < xp_sv[j].deg_lim_l*100 )
 					printf("*******ERROR**** xv_sv[%d].deg_sv=%f\n", j, xv_sv[j].deg_sv/100.0f);
 		}
-#ifdef VREP_SIMULATOR
+
+/*#ifdef VREP_SIMULATOR
 		{
 			static int cnt = 0;
 			std::vector<int> angles(24, 0);
@@ -473,12 +480,12 @@ int		main( int argc, char *argv[] )
 				boost::this_thread::sleep(boost::posix_time::microseconds(5000));
 			}
 			if (cnt > 5) {
-				xv_gyro.gyro_data1 = -sd.gyro[0] * 1;	// roll		未解決！！	予想では	最大電圧(オフセット済み):1[V], 最大検出:500[deg/sec] 1/500=0.002 にxp_gyro.gyro_k1,2(1000)をかける 0.002*1000=2
-				xv_gyro.gyro_data2 = -sd.gyro[1] * 1;	// pitch	未解決！！
-				xv_gyro.gyro_data3 =  sd.gyro[2] * 1;	// yaw	最大電圧(オフセット済み):2[V], 最大検出:200[deg/sec] 2/200=0.01 にxp_gyro.gyro_k3(100)をかける 0.01*100=1
-				xv_acc.acc_data1 = sd.accel[0] / 9.8f * 0.3f * 3.1f;	// x	/9.8で単位をGからm/ssにする
-				xv_acc.acc_data2 = sd.accel[1] / 9.8f * 0.3f * 3.1f;	// y	1.08/3.6 = 0.3 でスケールをあわせる	センサの最大電圧（オフセット済み）:1.08[V], 最大検出:3.6[G]
-				xv_acc.acc_data3 = sd.accel[2] / 9.8f * 0.3f * 3.1f;	// z	最後にxp_acc.acc_k(3.1)をかける
+				xv_gyro.gyro_data1 = -sd.gyro[0] * 1;	// roll		�������I�I	�\�z�ł�	�ő�d��(�I�t�Z�b�g�ς�):1[V], �ő匟�o:500[deg/sec] 1/500=0.002 ��xp_gyro.gyro_k1,2(1000)�������� 0.002*1000=2
+				xv_gyro.gyro_data2 = -sd.gyro[1] * 1;	// pitch	�������I�I
+				xv_gyro.gyro_data3 =  sd.gyro[2] * 1;	// yaw	�ő�d��(�I�t�Z�b�g�ς�):2[V], �ő匟�o:200[deg/sec] 2/200=0.01 ��xp_gyro.gyro_k3(100)�������� 0.01*100=1
+				xv_acc.acc_data1 = sd.accel[0] / 9.8f * 0.3f * 3.1f;	// x	/9.8�ŒP�ʂ�G����m/ss�ɂ���
+				xv_acc.acc_data2 = sd.accel[1] / 9.8f * 0.3f * 3.1f;	// y	1.08/3.6 = 0.3 �ŃX�P�[�������킹��	�Z���T�̍ő�d���i�I�t�Z�b�g�ς݁j:1.08[V], �ő匟�o:3.6[G]
+				xv_acc.acc_data3 = sd.accel[2] / 9.8f * 0.3f * 3.1f;	// z	�Ō��xp_acc.acc_k(3.1)��������
 //				printf("R:%lf\tP:%lf\tY:%lf\n",xv_gyro.gyro_data1, xv_gyro.gyro_data2, xv_gyro.gyro_data3);
 //				printf("X:%f\tY:%f\tZ:%f\n",xv_acc.acc_data1, xv_acc.acc_data2, xv_acc.acc_data3);
 				
@@ -498,11 +505,15 @@ int		main( int argc, char *argv[] )
 			}
 			cnt ++;
 		}
-#endif // VREP_SIMULATOR
+#endif // VREP_SIMULATOR*/
 
+
+
+
+//この辺は普通にros2の時間管理でなんとかなりそうゾーンだな
 #if !defined VREP_SIMULATOR
-		//rtm_main();//モーションローダを動かすのに必要だが、適切なタイミングを見つける必要あり
-		// 一定周期のためのwait
+		//rtm_main();//���[�V�������[�_�𓮂����̂ɕK�v�����A�K�؂ȃ^�C�~���O��������K�v����
+		// �������̂��߂�wait
 		boost::posix_time::ptime now = boost::posix_time::microsec_clock::local_time(); 
 		boost::posix_time::time_duration diff = now - ptime;
 		if (diff.total_milliseconds() > (FRAME_RATE))

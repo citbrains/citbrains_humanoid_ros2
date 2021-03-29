@@ -43,13 +43,13 @@ float			old_yaw = 0.0f;
 /*	variables							*/
 /*--------------------------------------*/
 
-unsigned short	count_joy;						// ƒRƒ}ƒ“ƒh‚Ì”
+unsigned short	count_joy;						// ï¿½Rï¿½}ï¿½ï¿½ï¿½hï¿½Ìï¿½
 tp_xv_comm		xv_comm;
 tp_xv_comm_bin	xv_comm_bin;
 tp_joy_status	joy_status;
 tp_xv_joy		xv_joy;
 char			xv_comm_response[8];
-int				is_walk_change;					// •às‚ğ•ÏX‚µ‚½‚©‚Ç‚¤‚©‚Ìƒtƒ‰ƒO
+int				is_walk_change;					// ï¿½ï¿½ï¿½sï¿½ï¿½ÏXï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç‚ï¿½ï¿½ï¿½ï¿½Ìƒtï¿½ï¿½ï¿½O
 
 #define MAX_ONE_STEP_X 200   //[mm]
 #define MAX_ONE_STEP_Y 200   //[mm]
@@ -129,7 +129,7 @@ void	joy_init( void )
 	xv_joy.walk_time_dutyfactor		=	xv_mv_walk.time_dutyfactor;
 	xv_joy.walk_step_len_offset		= 	0.f;
 
-	is_walk_change					=	0;		// •às‚ğ•ÏX‚µ‚½‚©‚Ç‚¤‚©‚Ìƒtƒ‰ƒO
+	is_walk_change					=	0;		// ï¿½ï¿½ï¿½sï¿½ï¿½ÏXï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç‚ï¿½ï¿½ï¿½ï¿½Ìƒtï¿½ï¿½ï¿½O
 }
 
 
@@ -193,13 +193,13 @@ void	joy( void )
 	switch( _xv_comm.cmd ){
 		case	'P':		/*	servo torque on/off	*/
 			switch( _xv_comm_bin.para1 ) {
-			  case	0:		// ƒT[ƒ{OFF
+			  case	0:		// ï¿½Tï¿½[ï¿½{OFF
 				printf("SERVO OFF !!\n");
 				flag_servo_off		=	ON;
 				flag_ukemi			=	OFF;
 				flag_motion_accept	=	ON;
 				break;
-			  case	1:		// ƒT[ƒ{ON
+			  case	1:		// ï¿½Tï¿½[ï¿½{ON
 				printf("SERVO ON !!\n");
 				sq_flag.start		=	ON;
 				break;
@@ -535,7 +535,7 @@ void	joy( void )
 		 * 65-68:servo12, 69-72:gyro   , 73-76:pan    , 77-80:tilt   ,
 		 * 81-84:quaternion_w, 85-88:quaternion_x, 89-92:quaternion_y, 93-96:quaternion_z
 		 */
-		case	'Q':		/*	Quaternion‚Ìæ“¾ */
+		case	'Q':		/*	Quaternionï¿½Ìæ“¾ */
 			joy_status.cmd		=	'Q';
 
 			/*	robot is moving	*/
@@ -637,7 +637,7 @@ void	joy( void )
 		case	'A':		/*	walk all direction	*/
 			accurate_one_step_mode = 0;
 			/***	number of steps	***/
-			if( !sq_flag.walk ) xv_mv.count = 0;	// •às‚µ‚Ä‚¢‚È‚¢‚É‚ÍC•à”ƒJƒEƒ“ƒ^‚ğ0‚É‚·‚éD
+			if( !sq_flag.walk ) xv_mv.count = 0;	// ï¿½ï¿½ï¿½sï¿½ï¿½ï¿½Ä‚ï¿½ï¿½È‚ï¿½ï¿½ï¿½ï¿½É‚ÍCï¿½ï¿½ï¿½ï¿½ï¿½Jï¿½Eï¿½ï¿½ï¿½^ï¿½ï¿½0ï¿½É‚ï¿½ï¿½ï¿½D
 
 			if( _xv_comm_bin.para1 != 0 ) {
 				xv_joy.walk_num	=	(short)(limit( _xv_comm_bin.para1, 100, 2 ) + xv_mv.count);		/*	last steps	[num/bit]	*/
@@ -646,7 +646,7 @@ void	joy( void )
 			}
 
 			sq_flag.walk		=	ON;
-			is_walk_change		=	1;				// •às‚ğ•ÏX‚µ‚½‚©‚Ç‚¤‚©‚Ìƒtƒ‰ƒO
+			is_walk_change		=	1;				// ï¿½ï¿½ï¿½sï¿½ï¿½ÏXï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç‚ï¿½ï¿½ï¿½ï¿½Ìƒtï¿½ï¿½ï¿½O
 
 			/***	hip yaw angle		***/		/*	[deg/bit]	*/
 			w1	=	limit( _xv_comm_bin.para2, xp_mv_walk.theta, -xp_mv_walk.theta );
@@ -667,7 +667,7 @@ void	joy( void )
 			if( fabs(xv_joy.walk_time - xv_mv_walk.time_old) > EPS_DATA ){	/*	time changed	*/
 				xv_joy.walk_zmp				=	zmp_fun( xv_joy.walk_time, xp_mv_walk.y_balance);
 				xv_joy.walk_time_dutyfactor	=	limit( 0.30f / xv_joy.walk_time, 1.0f, 0.05f );
-				// —V‹r‚ÌŠÔ 0.30[s]
+				// ï¿½Vï¿½rï¿½Ìï¿½ï¿½ï¿½ 0.30[s]
 				xv_mv_walk.time_old	=	xv_joy.walk_time;
 			}
 
@@ -692,7 +692,7 @@ void	joy( void )
 			{
 				xv_data_d[HEAD_YAW].time	=	(float)_xv_comm_bin.para4 / 10.f;
 // check
-				{								// ñ‚ÌŠp“x‚ÌŒvZ’l‚ÆÀÛ‚Ì’l‚ğ‡‚í‚·‚½‚ß
+				{								// ï¿½ï¿½ÌŠpï¿½xï¿½ÌŒvï¿½Zï¿½lï¿½Æï¿½ï¿½Û‚Ì’lï¿½ï¿½ï¿½ï¿½ï¿½í‚·ï¿½ï¿½ï¿½ï¿½
 					float min_period		= (float)fabs(w  - xv_mvdata_d[HEAD_YAW].out_old) / 60.0f * 0.22f;
 					if (min_period < 0.1f) min_period = 0.1f;
 					if (xv_data_d[HEAD_YAW].time < min_period) xv_data_d[HEAD_YAW].time = min_period;
@@ -733,7 +733,7 @@ void	joy( void )
 			if( _xv_comm_bin.para5 > 0) {
 				xv_data_d[HEAD_YAW].time	=	(float)_xv_comm_bin.para5 / 10.f;
 // check
-				{								// ñ‚ÌŠp“x‚ÌŒvZ’l‚ÆÀÛ‚Ì’l‚ğ‡‚í‚·‚½‚ß
+				{								// ï¿½ï¿½ÌŠpï¿½xï¿½ÌŒvï¿½Zï¿½lï¿½Æï¿½ï¿½Û‚Ì’lï¿½ï¿½ï¿½ï¿½ï¿½í‚·ï¿½ï¿½ï¿½ï¿½
 					float w					= (float)(_xv_comm_bin.para1 * 10 + _xv_comm_bin.para2);
 					float min_period		= (float)fabs(w  - xv_mvdata_d[HEAD_YAW].out_old) / 60.0f * 0.22f;
 					if (min_period < 0.1f) min_period = 0.1f;
@@ -784,7 +784,7 @@ void	joy( void )
 				if(mode_motion != MOTION_MOTION) // only stop if current motion is not special action
 				{
 					xv_mv.count				=	10001; // max. step number is 10000 (set by '0' as desired step number
-					reset_flag(sq_flag);		// ‘S‚Ä‚Ìó‘Ôƒtƒ‰ƒO‚ğƒNƒŠƒA
+					reset_flag(sq_flag);		// ï¿½Sï¿½Ä‚Ìï¿½Ôƒtï¿½ï¿½ï¿½Oï¿½ï¿½ï¿½Nï¿½ï¿½ï¿½A
 					xv_joy.walk_x_percent		=	0.f;
 					xv_joy.walk_y_percent		=	0.f;
 					xv_joy.walk_theta_percent	=	0.f;
@@ -911,6 +911,9 @@ void	joy( void )
 
 /*--------------------------------------*/
 /*	read joy stick data from rx format	*/
+/*	2021.3.29 è¿½è¨˜						*/
+/*	ã“ã‚Œã¯ã‚‚ã†joystickã®ãƒ‡ãƒ¼ã‚¿ã‚’èª­ã‚“ã§ã„  */
+/*	ã‚‹ã®ã§ã¯ç„¡ã„ã¨æ€ã‚ã‚Œã‚‹ã€‚			  */
 /*--------------------------------------*/
 void	joy_read( void )
 {
