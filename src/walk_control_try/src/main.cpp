@@ -25,16 +25,13 @@
 #include	<stdio.h>
 #include	<math.h>
 #include	<KSerialPort.h>
-#ifdef _MSC_VER
-#include	<Windows.h>
-#include	<mmsystem.h>
-#endif
+
 #include	<boost/thread.hpp>
 #include	<string>
 #include	<HCIPC.h>
-#ifdef VREP_SIMULATOR
+/*#ifdef VREP_SIMULATOR
 #include	<SimulatorIPC.h>
-#endif
+#endif*/
 
 #include "pc_motion.h"
 #include	"ADIS16375.h"
@@ -308,11 +305,11 @@ int		main( int argc, char *argv[] )
 */
 
 	//boost::thread thread(boost::bind(ipcthread, argc, argv, id));
-	boost::posix_time::ptime ptime = boost::posix_time::microsec_clock::local_time(); 
+	boost::posix_time::ptime time_of_previous_loop = boost::posix_time::microsec_clock::local_time(); 
 	const char *servo_port = "/dev/kondoservo";
 	if (argc > 1)
 		servo_port = argv[1];
-#if !defined VREP_SIMULATOR
+//#if !defined VREP_SIMULATOR
 	int m_sampleCount = 0;
 	int m_sampleRate = 0;
 	uint64_t m_rateTimer;
@@ -338,7 +335,7 @@ int		main( int argc, char *argv[] )
 	RSOpen(servo_port);
 	B3MTorqueALLDown();
 
-#endif
+//#endif
 
 /*	#ifdef _MSC_VER
 	timeBeginPeriod(1);
@@ -352,22 +349,22 @@ int		main( int argc, char *argv[] )
 	eeprom_load((char *)"eeprom_list.txt");
 	flag_gyro.zero = ON;
 
-	// loop start
+	// loop start-----------------------------------------------
 	for( count_time_l = 0; ; count_time_l ++ )
 	{
 		bool cmd_accept = false;
 		{
-			// accept command			-----------------------ここジョイスティック受け取ってるけど流石にもう使ってないよね？--------------------------
-			//そういう話では無かった。確かにジョイスティックからのコマンドを受け取っている訳ではないが、普通にコマンドを受け取っていた。コメントを安易に信じるべきでない。
+			// accept command	
+			//ジョイスティックからのコマンドを受け取っている訳ではないが、普通にコマンドを受け取っていた。コメントを安易に信じるべきでない。
 			mutex::scoped_lock look(lock_obj);
 			if (cmd.size() > 0) {
 				memcpy(rfmt, &cmd[0], cmd.size());
-				joy_read();
+				joy_read();					//この辺でspin_someしとけばいいんじゃないか知らんけど
 				cmd_accept = true;
 				cmd = "";
 			}
 		}
-#if !defined VREP_SIMULATOR
+//#if !defined VREP_SIMULATOR
 		{
 			///// MPU9250 reading sensor data, calc quaternion and settings
 			static int continueous_error_count = 0;
@@ -421,10 +418,10 @@ int		main( int argc, char *argv[] )
 				if (continueous_error_count > 10) shutdown_flag = 1;
 			}
 		}
-#endif //!defined VREP_SIMULATOR
+//#endif //!defined VREP_SIMULATOR
 
 
-		if (!shutdown_flag) cntr();			//重要ゾーンじゃん
+		if (!shutdown_flag) cntr();			//重要ゾーン
 
 /*#if 0
 		{
@@ -446,7 +443,7 @@ int		main( int argc, char *argv[] )
 			fclose(fp);
 		}
 #endif*/
-
+		//倒れた時に頭の位置を正面に戻しているっぽい
 		static unsigned long last_pan_update = 0;
 		if ((fabs(xv_gyro.gyro_roll) > 30)||(fabs(xv_gyro.gyro_pitch) > 30)){
 			if (abs((long)(count_time_l - last_pan_update)) > 10){
@@ -455,7 +452,7 @@ int		main( int argc, char *argv[] )
 				last_pan_update = count_time_l;
 			}
 		}
-
+		//これは何ですか。多分エラー出力ですよね。何のエラー...。
 		for(int j=0; j<SERV_NUM; j++ )
 		{
 			if( xv_sv[j].deg_sv	> xp_sv[j].deg_lim_h*100 || xv_sv[j].deg_sv < xp_sv[j].deg_lim_l*100 )
@@ -510,12 +507,12 @@ int		main( int argc, char *argv[] )
 
 
 
-//この辺は普通にros2の時間管理でなんとかなりそうゾーンだな
-#if !defined VREP_SIMULATOR
+//この辺は普通にros2の時間管理でなんとかなりそうゾーンだな。spinOnceがあるのか知らんけどそれ系でどうにかなりそう。
+//#if !defined VREP_SIMULATOR
 		//rtm_main();//���[�V�������[�_�𓮂����̂ɕK�v�����A�K�؂ȃ^�C�~���O��������K�v����
 		// �������̂��߂�wait
 		boost::posix_time::ptime now = boost::posix_time::microsec_clock::local_time(); 
-		boost::posix_time::time_duration diff = now - ptime;
+		boost::posix_time::time_duration diff = now - time_of_previous_loop;
 		if (diff.total_milliseconds() > (FRAME_RATE))
 		{
 			FILE *fp = fopen("/var/tmp/error.txt","a");
@@ -533,11 +530,11 @@ int		main( int argc, char *argv[] )
 //			boost::this_thread::sleep(boost::posix_time::microseconds(10));
 			boost::this_thread::sleep(boost::posix_time::microseconds(FRAME_RATE*1000 - diff.total_microseconds() - 100));
 			now = boost::posix_time::microsec_clock::local_time(); 
-			diff = now - ptime;
+			diff = now - time_of_previous_loop;
 		}
 //		printf("%dus\n", diff.total_microseconds());
-		ptime = now;
-#endif
+		time_of_previous_loop = now;
+//#endif
 //		printf("cnt:%05d mode:%d%d%d%d%d\n", count_time_l, sq_flag.start, sq_flag.straight, sq_flag.ready, sq_flag.walk, sq_flag.motion);
 	}
 }
