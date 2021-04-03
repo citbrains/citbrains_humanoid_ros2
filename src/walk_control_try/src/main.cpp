@@ -27,6 +27,8 @@
 #include	<KSerialPort.h>
 
 #include	<boost/thread.hpp>
+#include 	<thread>						//---------コンパイルオプション忘れずつけろ～
+#include 	<chrono>
 #include	<string>
 #include	<HCIPC.h>
 /*#ifdef VREP_SIMULATOR
@@ -304,8 +306,8 @@ int		main( int argc, char *argv[] )
 #endif
 */
 
-	//boost::thread thread(boost::bind(ipcthread, argc, argv, id));
-	boost::posix_time::ptime time_of_previous_loop = boost::posix_time::microsec_clock::local_time(); 
+	boost::thread thread(boost::bind(ipcthread, argc, argv, id));
+	std::chrono::system_clock::time_point time_of_previous_loop = std::chrono::system_clock::now();
 	const char *servo_port = "/dev/kondoservo";
 	if (argc > 1)
 		servo_port = argv[1];
@@ -511,7 +513,7 @@ int		main( int argc, char *argv[] )
 //#if !defined VREP_SIMULATOR
 		//rtm_main();//���[�V�������[�_�𓮂����̂ɕK�v�����A�K�؂ȃ^�C�~���O��������K�v����
 		// �������̂��߂�wait
-		boost::posix_time::ptime now = boost::posix_time::microsec_clock::local_time(); 
+		std::chrono::system_clock::time_point now = std::chrono::system_clock::now(); 
 		boost::posix_time::time_duration diff = now - time_of_previous_loop;
 		if (diff.total_milliseconds() > (FRAME_RATE))
 		{
